@@ -1,13 +1,15 @@
 import asyncio
 import aiohttp
+import traceback
 
 from typing import Any, Awaitable, Callable, Optional, Tuple
 
 from ..events import NewMessage
 from ..types.message import Message
 from .methods.messages import MessagesMethods
+from .methods.media import MediaMethods
 
-class BaleClient(MessagesMethods):
+class BaleClient(MessagesMethods, MediaMethods):
     def __init__(self, token: str, *, timeout: float = 30.0):
         self.token = token
         self.base_url = f"https://tapi.bale.ai/bot{token}/"
@@ -59,7 +61,8 @@ class BaleClient(MessagesMethods):
         try:
             await callback(event)
         except Exception:
-            print("Unhandled exception in handler %r", callback)
+            print(f"\n❌ Error in handler '{callback.__name__}':")
+            traceback.print_exc()
 
     async def _poll(self):
         offset = 0

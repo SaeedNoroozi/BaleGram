@@ -23,7 +23,8 @@ class MessagesMethods:
         response: Any = await self._request("sendMessage", data=payload)
 
         if response and response.get("ok"):
-            from ...types.message import Message
+            from balegram.types.message import Message
             return Message(client=self, data=response["result"])
         
         return response
+        
