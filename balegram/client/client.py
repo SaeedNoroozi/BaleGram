@@ -4,8 +4,9 @@ import traceback
 
 from typing import Any, Awaitable, Callable, Optional, Tuple
 
-from ..events import NewMessage
-from ..types.message import Message
+from balegram.events import NewMessage, CallbackQuery
+from balegram.types.message import Message
+from balegram.types.callback_query import CallbackQueryEvent
 from .methods.messages import MessagesMethods
 from .methods.media import MediaMethods
 
@@ -100,6 +101,12 @@ class BaleClient(MessagesMethods, MediaMethods):
         for event_builder, callback in self._handlers:
             if isinstance(event_builder, NewMessage) and "message" in update:
                 event = Message(client=self, data=update["message"])
+
+                if event_builder.filter(event):
+                    asyncio.create_task(self._run_handler(callback, event))
+            
+            elif isinstance(event_builder, CallbackQuery) and "callback_query" in update:
+                event = CallbackQueryEvent(client=self, data=update["callback_query"])
 
                 if event_builder.filter(event):
                     asyncio.create_task(self._run_handler(callback, event))

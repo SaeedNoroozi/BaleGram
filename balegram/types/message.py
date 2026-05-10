@@ -1,4 +1,6 @@
 import re
+import os
+
 from typing import Any, Dict, List, Optional
 
 from .attachments import Contact, Location
@@ -107,14 +109,67 @@ class Message(BaleObject):
         caption: Optional[str] = None,
         reply_markup: Optional[Dict[str, Any]] = None,
     ):
-        if file is not None:
-            raise NotImplementedError("Sending files is not implemented yet.")
-        if caption is not None:
-            raise NotImplementedError("Caption is not implemented yet.")
+        target_message_id = self.message_id
 
+        if file is not None:
+            file_caption = caption or message
+
+            ext = ""
+
+            if isinstance(file, str):
+                ext = os.path.splitext(file)[1].lower()
+                if ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
+                    return await self._client.send_photo(
+                        entity=self.chat_id,
+                        photo=file,
+                        caption=file_caption,
+                        reply_to=target_message_id,
+                        reply_markup=reply_markup
+                    )
+                elif ext in ['.mp4', '.avi', '.mkv', '.mov', '.wmv']:
+                    return await self._client.send_video(
+                        entity=self.chat_id,
+                        video=file,
+                        caption=file_caption,
+                        reply_to=target_message_id,
+                        reply_markup=reply_markup
+                    )
+                elif ext == '.ogg':
+                    return await self._client.send_voice(
+                        entity=self.chat_id,
+                        voice=file,
+                        caption=file_caption,
+                        reply_to=target_message_id,
+                        reply_markup=reply_markup
+                    )
+                elif ext in ['.mp3', '.wav', '.m4a', '.aac']:
+                    return await self._client.send_audio(
+                        entity=self.chat_id,
+                        audio=file,
+                        caption=file_caption,
+                        reply_to=target_message_id,
+                        reply_markup=reply_markup
+                    )
+                elif ext in ['.gif']:
+                    return await self._client.send_animation(
+                        entity=self.chat_id,
+                        animation=file,
+                        caption=file_caption,
+                        reply_to=target_message_id,
+                        reply_markup=reply_markup
+                    )
+                else:
+                    return await self._client.send_document(
+                        entity=self.chat_id,
+                        document=file,
+                        caption=file_caption,
+                        reply_to=target_message_id,
+                        reply_markup=reply_markup
+                    )
+                
         return await self._client.send_message(
             entity=self.chat_id,
             message=message or "",
-            reply_to=self.message_id,
+            reply_to=target_message_id,
             reply_markup=reply_markup
         )

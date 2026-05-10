@@ -1,4 +1,6 @@
 import re
+from typing import Optional
+
 
 class NewMessage:
     def __init__(self, pattern=None, func=None, from_users=None):
@@ -25,5 +27,16 @@ class NewMessage:
         if self.func:
             if not self.func(event):
                 return False
+
+        return True
+
+
+class CallbackQuery:
+    def __init__(self, data: Optional[str] = None):
+        self.data = data
+
+    def filter(self, event) -> bool:
+        if self.data is not None:
+            return event.data == self.data
 
         return True

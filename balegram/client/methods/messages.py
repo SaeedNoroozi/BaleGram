@@ -1,5 +1,7 @@
 from typing import Any, Dict, Optional, Union
 
+import json
+
 class MessagesMethods:
 
     async def send_message(
@@ -7,7 +9,7 @@ class MessagesMethods:
         entity: Union[int, str],
         message: str,
         reply_to: Optional[int] = None,
-        reply_markup: Optional[Dict[str, Any]] = None,
+        reply_markup: Optional[Any] = None,
     ):
         payload = {
             "chat_id": entity,
@@ -18,7 +20,12 @@ class MessagesMethods:
             payload["reply_to_message_id"] = reply_to
 
         if reply_markup is not None:
-            payload["reply_markup"] = reply_markup
+            if hasattr(reply_markup, "to_dict"):
+                payload["reply_markup"] = reply_markup.to_dict()
+            elif isinstance(reply_markup, dict):
+                payload["reply_markup"] = json.dumps(reply_markup)
+            else:
+                raise ValueError("Invalid reply markup type")
 
         response: Any = await self._request("sendMessage", data=payload)
 
@@ -28,3 +35,18 @@ class MessagesMethods:
         
         return response
         
+    async def answer_callback_query(
+        self,
+        callback_query_id: str,
+        text: Optional[str] = None,
+        show_alert: bool = False,
+    ):
+        payload = {
+            "callback_query_id": callback_query_id,
+            "show_alert": show_alert,
+        }
+
+        if text:
+            payload["text"] = text
+
+        return await self._request("answerCallbackQuery", data=payload)

@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, Optional, Union
 
 import aiohttp
+import json
 
 class MediaMethods:
 
@@ -13,6 +14,15 @@ class MediaMethods:
         file_data: Any,
         kwargs: dict,
     ):
+        if "reply_markup" in kwargs and kwargs["reply_markup"] is not None:
+            markup = kwargs["reply_markup"]
+            if hasattr(markup, "to_dict"):
+                kwargs["reply_markup"] = json.dumps(markup.to_dict())
+            elif isinstance(markup, dict):
+                kwargs["reply_markup"] = json.dumps(markup)
+            else:
+                raise ValueError("Invalid reply markup type")
+
         if isinstance(file_data, str) and os.path.isfile(file_data):
             form = aiohttp.FormData()
             form.add_field('chat_id', str(entity))
