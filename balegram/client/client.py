@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable, Optional, Tuple
 from balegram.events import NewMessage, CallbackQuery
 from balegram.types.message import Message
 from balegram.types.callback_query import CallbackQueryEvent
+from balegram.errors import check_api_result
 from .methods.messages import MessagesMethods
 from .methods.media import MediaMethods
 
@@ -44,10 +45,13 @@ class BaleClient(MessagesMethods, MediaMethods):
         try:
             if is_multipart:
                 async with self._session.post(url, data=data) as response:
-                    return await response.json()
+                    result = await response.json()
+            else:
+                async with self._session.post(url, json=data) as response:
+                    result = await response.json()
 
-            async with self._session.post(url, json=data) as response:
-                return await response.json()
+            check_api_result(result)
+            return result
 
         except (aiohttp.ClientError, asyncio.TimeoutError):
             raise
