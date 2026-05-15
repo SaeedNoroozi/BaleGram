@@ -5,7 +5,9 @@ class BaleGramError(Exception):
     def __init__(self, message: str, error_code: Optional[int] = None):
         self.message = message
         self.error_code = error_code
-        super().__init__(f"[{error_code}] {message}")
+
+        prefix = f"[{error_code}] " if error_code else ""
+        super().__init__(f"{prefix}{message}")
 
 
 class BadRequestError(BaleGramError):
@@ -34,6 +36,19 @@ class ServerError(BaleGramError):
 class ChatNotFoundError(BadRequestError): pass
 class InvalidTokenError(UnauthorizedError): pass
 class MessageNotModifiedError(BadRequestError): pass
+
+class FileError(BaleGramError):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+class FileTooLargeError(FileError):
+    pass
+
+class FileDownloadError(FileError):
+    pass
+
+class LocalFileSystemError(FileError):
+    pass
 
 def check_api_result(result: dict) -> None:
     if result.get("ok", True):

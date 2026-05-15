@@ -1,7 +1,7 @@
 import re
 import os
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from .attachments import Contact, Location
 from .base import BaleObject
@@ -173,3 +173,81 @@ class Message(BaleObject):
             reply_to=target_message_id,
             reply_markup=reply_markup
         )
+
+    async def edit(
+        self,
+        text: str,
+        reply_markup: Optional[Any] = None,
+    ):
+        return await self._client.edit_message_text(
+            entity=self.chat_id,
+            message_id=self.message_id,
+            text=text,
+            reply_markup=reply_markup
+        )
+
+    async def delete(self):
+        return await self._client.delete_message(
+            entity=self.chat_id,
+            message_id=self.message_id
+        ) 
+    
+    async def forward_to(
+        self,
+        target_chat_id: Union[int, str],
+    ):
+        return await self._client.forward_message(
+            entity=target_chat_id,
+            from_chat_id=self.chat_id,
+            message_id=self.message_id
+        )
+    
+    async def copy_to(
+        self,
+        target_chat_id: Union[int, str],
+    ):
+        return await self._client.copy_message(
+            entity=target_chat_id,
+            from_chat_id=self.chat_id,
+            message_id=self.message_id,
+        )
+
+    async def download_media(
+        self,
+        save_path: str,
+    ) -> Optional[str]:
+
+        file_id = None
+
+        if self.photo and len(self.photo) > 0:
+            file_id = self.photo[-1].file_id
+
+        elif self.video:
+            file_id = self.video.file_id
+
+        elif self.audio:
+            file_id = self.audio.file_id
+
+        elif self.voice:
+            file_id = self.voice.file_id
+
+        elif self.animation:
+            file_id = self.animation.file_id
+
+        elif self.document:
+            file_id = self.document.file_id
+
+        if not file_id:
+            return None
+
+        return await self._client.download_file(file_id, save_path)
+
+    async def action(
+        self,
+        action_name: str = "typing",
+    ):
+        return await self._client.send_chat_action(
+            entity=self.chat_id,
+            action=action_name
+        )
+

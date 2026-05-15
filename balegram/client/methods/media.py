@@ -1,4 +1,7 @@
 import os
+import aiofiles
+
+from balegram.errors import FileTooLargeError, FileDownloadError, LocalFileSystemError
 from typing import Any, Dict, Optional, Union
 
 import aiohttp
@@ -184,3 +187,51 @@ class MediaMethods:
             animation,
             kwargs,
         )
+
+    async def get_file(self, file_id: str):
+        payload = {
+            "file_id": file_id,
+        }
+
+        response = await self._request("getFile", data=payload)
+
+        if response and response.get("ok"):
+            from balegram.types.file import File
+            return File(client=self, data=response["result"])
+        
+        return response
+
+    async def download_file(self, file_id: str, save_path: str) -> str:
+        file_object = await self.get_file(file_id)
+
+        save_dir = os.path.dirname(save_path)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+
+        if not hasattr(file_object, "file_path") or not file_object.file_path:
+            raise FileDownloadError(f"Could not find file_path for file_id: {file_id}. Make sure the ID is correct.")
+
+        if file_object.file_size and file_object.file_size > (20 * 1024 * 1024):
+            mb_size = file_object.file_size / (1024 * 1024)
+            raise FileTooLargeError(f"File size is too large to download. The file is {mb_size:.2f} MB. The maximum allowed size is 20 MB.")
+
+        base_api_url = self.base_url.split("/bot")[0]
+        download_url = f"{base_api_url}/file/bot{self.token}/{file_object.file_path}"
+
+        try:
+            async with self._session.get(download_url) as response:
+                if response.status != 200:
+                    raise FileDownloadError(f"Failed to download file. Status code: {response.status}")
+                
+                async with aiofiles.open(save_path, "wb") as f:
+                    async for chunk in response.content.iter_chunked(1024 * 1024):
+                        await f.write(chunk)
+        
+        except FileNotFoundError:
+            raise LocalFileSystemError(f"Could not find file at path: {save_path}")
+        
+        except Exception as e:
+            raise FileDownloadError(f"Failed to download file: {e}")
+
+        return save_path
+

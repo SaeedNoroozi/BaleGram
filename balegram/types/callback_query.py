@@ -97,3 +97,19 @@ class CallbackQueryEvent(BaleObject):
             reply_to=target_message_id,
             reply_markup=reply_markup
         )
+
+    async def delete(self) -> bool:
+        if self.message:
+            return await self.message.delete()
+
+        return False
+    
+    async def edit(
+        self,
+        text: str,
+        reply_markup: Optional[Any] = None,
+    ):
+        if self.message:
+            return await self.message.edit(text, reply_markup)
+
+        return None
