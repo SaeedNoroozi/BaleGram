@@ -18,6 +18,7 @@ class BaleClient(MessagesMethods, MediaMethods):
         self._timeout = timeout
         self._handlers: list[Tuple[Any, Callable[[Message], Awaitable[None]]]] = []
         self._session: Optional[aiohttp.ClientSession] = None
+        self._conversations = {}
 
     async def __aenter__(self) -> "BaleClient":
         await self._ensure_session()
@@ -101,19 +102,28 @@ class BaleClient(MessagesMethods, MediaMethods):
         finally:
             await self.close()
 
-    async def _process_update(self, update):
-        for event_builder, callback in self._handlers:
-            if isinstance(event_builder, NewMessage) and "message" in update:
-                event = Message(client=self, data=update["message"])
+    async def _process_update(self, update: dict):
+        if "message" in update:
+            event = Message(client=self, data=update["message"])
+            chat_id = str(event.chat_id)
 
-                if event_builder.filter(event):
-                    asyncio.create_task(self._run_handler(callback, event))
+            if chat_id in self._conversations:
+                conv = self._conversations[chat_id]
+                if conv._waiter and not conv._waiter.done():
+                    conv._waiter.set_result(event)
+                    return      
+            for event_builder, callback in self._handlers:
+                if isinstance(event_builder, NewMessage):
+                    if event_builder.filter(event):
+                        asyncio.create_task(self._run_handler(callback, event))
+
+        elif "callback_query" in update:
+            event = CallbackQueryEvent(client=self, data=update["callback_query"])
             
-            elif isinstance(event_builder, CallbackQuery) and "callback_query" in update:
-                event = CallbackQueryEvent(client=self, data=update["callback_query"])
-
-                if event_builder.filter(event):
-                    asyncio.create_task(self._run_handler(callback, event))
+            for event_builder, callback in self._handlers:
+                if isinstance(event_builder, CallbackQuery):
+                    if event_builder.filter(event):
+                        asyncio.create_task(self._run_handler(callback, event))
 
     def run_until_disconnected(self):
         try:
@@ -122,3 +132,7 @@ class BaleClient(MessagesMethods, MediaMethods):
             return asyncio.create_task(self._poll())
         except KeyboardInterrupt:
             print("Bot stopped successfully.")
+
+    def conversation(self, chat_id: str | int, timeout: int = 120):
+        from balegram.conversation import Conversation
+        return Conversation(self, chat_id, timeout)
