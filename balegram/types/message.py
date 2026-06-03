@@ -21,7 +21,7 @@ class Message(BaleObject):
         chat_data = data.get("chat", {})
 
         self.sender: Optional[User] = User(sender_data) if sender_data else None
-        self.chat: Optional[Chat] = Chat(chat_data) if chat_data else None
+        self.chat: Optional[Chat] = Chat(self._client, chat_data) if chat_data else None
 
         self.chat_id: Optional[int] = self.chat.id if self.chat else None
         self.sender_id: Optional[int] = self.sender.id if self.sender else None
@@ -39,7 +39,7 @@ class Message(BaleObject):
         self.pattern_match: Optional[re.Match] = None
 
         self.forward_from: Optional[User] = User(data.get("forward_from")) if data.get("forward_from") else None
-        self.forward_from_chat: Optional[Chat] = Chat(data.get("forward_from_chat")) if data.get("forward_from_chat") else None
+        self.forward_from_chat: Optional[Chat] = Chat(self._client, data.get("forward_from_chat")) if data.get("forward_from_chat") else None
         self.forward_from_message_id: Optional[int] = data.get("forward_from_message_id")
         self.forward_signature: Optional[str] = data.get("forward_signature")
         self.forward_sender_name: Optional[str] = data.get("forward_sender_name")
@@ -251,3 +251,11 @@ class Message(BaleObject):
             action=action_name
         )
 
+    async def get_chat_info(self):
+        return await self._client.get_chat(self.chat_id)
+
+async def ban_sender(self) -> bool:
+        if not self.sender or not self.sender.id:
+            return False
+
+        return await self._client.ban_chat_member(self.chat_id, self.sender.id)

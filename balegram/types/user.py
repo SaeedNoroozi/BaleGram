@@ -11,3 +11,9 @@ class User(BaleObject):
         self.last_name: Optional[str] = data.get("last_name")
         self.username: Optional[str] = data.get("username")
         self.language_code: Optional[str] = data.get("language_code")
+
+    @property
+    def full_name(self) -> str:
+        if self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.first_name

@@ -10,8 +10,9 @@ from balegram.types.callback_query import CallbackQueryEvent
 from balegram.errors import check_api_result
 from .methods.messages import MessagesMethods
 from .methods.media import MediaMethods
+from .methods.chats import ChatsMethods
 
-class BaleClient(MessagesMethods, MediaMethods):
+class BaleClient(MessagesMethods, MediaMethods, ChatsMethods):
     def __init__(self, token: str, *, timeout: float = 30.0):
         self.token = token
         self.base_url = f"https://tapi.bale.ai/bot{token}/"
@@ -19,6 +20,7 @@ class BaleClient(MessagesMethods, MediaMethods):
         self._handlers: list[Tuple[Any, Callable[[Message], Awaitable[None]]]] = []
         self._session: Optional[aiohttp.ClientSession] = None
         self._conversations = {}
+        self._scheduled_tasks = []
 
     async def __aenter__(self) -> "BaleClient":
         await self._ensure_session()
@@ -73,6 +75,10 @@ class BaleClient(MessagesMethods, MediaMethods):
     async def _poll(self):
         offset = 0
         print("BaleClient polling started")
+
+        for task in self._scheduled_tasks:
+            asyncio.create_task(self._run_scheduled_tasks(task))
+
         try:
             while True:
                 try:
@@ -136,3 +142,34 @@ class BaleClient(MessagesMethods, MediaMethods):
     def conversation(self, chat_id: str | int, timeout: int = 120):
         from balegram.conversation import Conversation
         return Conversation(self, chat_id, timeout)
+
+    def on_interval(self, seconds: int = 0, minutes: int = 0, hours: int = 0):
+
+        total_seconds = seconds + (minutes * 60) + (hours * 3600)
+        if total_seconds <= 0:
+            raise ValueError("Interval must be greater than 0")
+
+        def decorator(func):
+            self._scheduled_tasks.append({
+                "callback": func,
+                "interval": total_seconds,
+            })
+            return func
+
+        return decorator
+
+    async def _run_scheduled_tasks(self, task_info: dict):
+        callback = task_info["callback"]
+        interval = task_info["interval"]
+
+        while True:
+            await asyncio.sleep(interval)
+
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    asyncio.create_task(callback())
+                else:
+                    print(f"Warning: Scheduled task '{callback.__name__}' must be async!")
+            
+            except Exception as e:
+                print(f"Error in scheduled task '{callback.__name__}': {e}")

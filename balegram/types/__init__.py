@@ -1,6 +1,8 @@
 from .base import BaleObject
 from .user import User
 from .chat import Chat
+from .chat_member import ChatMember
+from .chat_invite_link import ChatInviteLink
 from .message import Message
 from .media import PhotoSize, Document, Video, Audio, Voice, Animation
 from .attachments import Contact, Location
